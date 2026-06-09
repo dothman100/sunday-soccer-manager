@@ -1,4 +1,4 @@
-const STORAGE_KEY = "sunday-soccer-manager-v1";
+const STORAGE_KEY = "sunday-soccer-manager-v2";
 const positions = ["GK", "Defender", "Midfielder", "Forward"];
 const ADMIN_PASSCODE = "sunday-admin";
 const VIEWER_PASSCODE = "soccer-viewer";
@@ -19,38 +19,447 @@ const attributeShortLabels = {
 };
 
 const seedPlayers = [
-  ["Marco Silva", 31, "GK", "Defender", 86, "Vocal organizer, quick off line."],
-  ["Andre King", 28, "Defender", "Midfielder", 78, "Reliable passer under pressure."],
-  ["Sam Patel", 34, "Midfielder", "Defender", 82, "Controls tempo, strong stamina."],
-  ["Luis Moreno", 24, "Forward", "Midfielder", 88, "Fast finisher, likes left channel."],
-  ["Ben Carter", 39, "Defender", "", 72, "Physical, good in the air."],
-  ["Omar Haddad", 27, "Midfielder", "Forward", 80, "Creative, high work rate."],
-  ["Chris Nguyen", 22, "Forward", "", 76, "Direct runner."],
-  ["David Ross", 45, "GK", "", 70, "Good hands, prefers shorter games."],
-  ["Nico Alvarez", 29, "Midfielder", "Forward", 84, "Two-way engine."],
-  ["Ethan Brooks", 33, "Defender", "GK", 75, "Can cover keeper if needed."],
-  ["Jay Williams", 26, "Forward", "Midfielder", 81, "Strong shot from distance."],
-  ["Ravi Singh", 37, "Defender", "Midfielder", 74, "Calm, smart positioning."],
-  ["Tom Ellis", 30, "Midfielder", "", 69, "Simple passes, steady."],
-  ["Alex Romero", 21, "Forward", "", 73, "Pacey, improving first touch."],
-  ["Mike Johnson", 41, "Defender", "", 67, "Good communicator."],
-  ["Diego Cruz", 32, "Midfielder", "Defender", 79, "Balanced all-around player."]
-].map((p, index) => ({
-  id: crypto.randomUUID(),
-  name: p[0],
-  age: p[1],
-  primaryPosition: p[2],
-  secondaryPosition: p[3],
-  rating: p[4],
-  attributes: buildDefaultAttributes(p[4], p[2]),
-  notes: p[5],
-  active: true,
-  ratingHistory: [
-    { date: "2026-05-17", rating: Math.max(1, p[4] - 2), note: "Seed baseline" },
-    { date: "2026-05-31", rating: p[4], note: "Current seed rating" }
-  ],
-  createdOrder: index
-}));
+    {
+        "id":  "5521e047-2d69-44a4-88d8-9b7712af2f8d",
+        "name":  "Alex Wolf",
+        "age":  28,
+        "primaryPosition":  "GK",
+        "secondaryPosition":  "",
+        "rating":  90,
+        "attributes":  {
+                           "speed":  90,
+                           "shooting":  85,
+                           "defending":  95,
+                           "passing":  70,
+                           "weakFoot":  45
+                       },
+        "notes":  "Still Learning the game, quick off line.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  84,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  86,
+                                  "note":  "Current seed rating"
+                              },
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  90,
+                                  "note":  "Manual rating edit"
+                              }
+                          ],
+        "createdOrder":  0
+    },
+    {
+        "id":  "b8f727d1-56a8-4b5a-812d-cad0f08fb75b",
+        "name":  "Eddy",
+        "age":  40,
+        "primaryPosition":  "GK",
+        "secondaryPosition":  "",
+        "rating":  80,
+        "attributes":  {
+                           "speed":  80,
+                           "shooting":  70,
+                           "defending":  80,
+                           "passing":  75,
+                           "weakFoot":  50
+                       },
+        "notes":  "Great positioning, Vocal Goalie.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  78,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  80,
+                                  "note":  "Current seed rating"
+                              }
+                          ],
+        "createdOrder":  5
+    },
+    {
+        "id":  "874dd4c9-6ea5-4f2c-8ddd-c3c8ad51ebf9",
+        "name":  "Raja Rabat",
+        "age":  35,
+        "primaryPosition":  "Forward",
+        "secondaryPosition":  "",
+        "rating":  90,
+        "attributes":  {
+                           "speed":  93,
+                           "shooting":  88,
+                           "defending":  76,
+                           "passing":  90,
+                           "weakFoot":  60
+                       },
+        "notes":  "Direct runner. Poacher. Goal scorer.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  74,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  76,
+                                  "note":  "Current seed rating"
+                              },
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  90,
+                                  "note":  "Manual rating edit"
+                              }
+                          ],
+        "createdOrder":  6
+    },
+    {
+        "id":  "06074ed4-0717-4369-8396-da8af865a658",
+        "name":  "Jospeh N",
+        "age":  45,
+        "primaryPosition":  "Forward",
+        "secondaryPosition":  "Midfielder",
+        "rating":  95,
+        "attributes":  {
+                           "speed":  90,
+                           "shooting":  94,
+                           "defending":  90,
+                           "passing":  87,
+                           "weakFoot":  88
+                       },
+        "notes":  "Game Changer.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  68,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  70,
+                                  "note":  "Current seed rating"
+                              },
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  95,
+                                  "note":  "Manual rating edit"
+                              }
+                          ],
+        "createdOrder":  7
+    },
+    {
+        "id":  "26f5cf0d-0187-460a-b287-321a31d9d40b",
+        "name":  "Ramzi Rabat",
+        "age":  44,
+        "primaryPosition":  "Midfielder",
+        "secondaryPosition":  "",
+        "rating":  86,
+        "attributes":  {
+                           "speed":  86,
+                           "shooting":  86,
+                           "defending":  85,
+                           "passing":  82,
+                           "weakFoot":  88
+                       },
+        "notes":  "Two-way engine. Dangerous in the air.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  82,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  84,
+                                  "note":  "Current seed rating"
+                              },
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  86,
+                                  "note":  "Manual rating edit"
+                              }
+                          ],
+        "createdOrder":  8
+    },
+    {
+        "id":  "92426146-4aaa-4340-8749-60dea56f049c",
+        "name":  "Rani Rabat",
+        "age":  50,
+        "primaryPosition":  "Midfielder",
+        "secondaryPosition":  "",
+        "rating":  86,
+        "attributes":  {
+                           "speed":  82,
+                           "shooting":  85,
+                           "defending":  85,
+                           "passing":  90,
+                           "weakFoot":  88
+                       },
+        "notes":  "two way player, versitile",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  73,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  75,
+                                  "note":  "Current seed rating"
+                              },
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  86,
+                                  "note":  "Manual rating edit"
+                              }
+                          ],
+        "createdOrder":  9
+    },
+    {
+        "id":  "17dd6dfc-b609-4d85-a515-15a3659b9364",
+        "name":  "Ramsey Othman",
+        "age":  29,
+        "primaryPosition":  "Midfielder",
+        "secondaryPosition":  "Defender",
+        "rating":  90,
+        "attributes":  {
+                           "speed":  84,
+                           "shooting":  88,
+                           "defending":  90,
+                           "passing":  90,
+                           "weakFoot":  70
+                       },
+        "notes":  "Overall versitile player, Positive impact everywhere.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  79,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  81,
+                                  "note":  "Current seed rating"
+                              },
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  90,
+                                  "note":  "Manual rating edit"
+                              }
+                          ],
+        "createdOrder":  10
+    },
+    {
+        "id":  "063d6904-d99d-4b85-aeda-28c934c6afae",
+        "name":  "Ravi Singh",
+        "age":  37,
+        "primaryPosition":  "Defender",
+        "secondaryPosition":  "Midfielder",
+        "rating":  74,
+        "attributes":  {
+                           "speed":  74,
+                           "shooting":  66,
+                           "defending":  82,
+                           "passing":  74,
+                           "weakFoot":  62
+                       },
+        "notes":  "Calm, smart positioning.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  72,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  74,
+                                  "note":  "Current seed rating"
+                              }
+                          ],
+        "createdOrder":  11
+    },
+    {
+        "id":  "df49e69d-5650-48a9-bb40-ac9210802e31",
+        "name":  "Tom Ellis",
+        "age":  30,
+        "primaryPosition":  "Midfielder",
+        "secondaryPosition":  "",
+        "rating":  69,
+        "attributes":  {
+                           "speed":  67,
+                           "shooting":  69,
+                           "defending":  69,
+                           "passing":  76,
+                           "weakFoot":  57
+                       },
+        "notes":  "Simple passes, steady.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  67,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  69,
+                                  "note":  "Current seed rating"
+                              }
+                          ],
+        "createdOrder":  12
+    },
+    {
+        "id":  "326f9096-a316-4557-90ab-b284fae295c8",
+        "name":  "Alex Romero",
+        "age":  21,
+        "primaryPosition":  "Forward",
+        "secondaryPosition":  "",
+        "rating":  73,
+        "attributes":  {
+                           "speed":  73,
+                           "shooting":  81,
+                           "defending":  65,
+                           "passing":  73,
+                           "weakFoot":  61
+                       },
+        "notes":  "Pacey, improving first touch.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  71,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  73,
+                                  "note":  "Current seed rating"
+                              }
+                          ],
+        "createdOrder":  13
+    },
+    {
+        "id":  "24da956f-9491-4b79-8f3d-535f33fbca44",
+        "name":  "Mike Johnson",
+        "age":  41,
+        "primaryPosition":  "Defender",
+        "secondaryPosition":  "",
+        "rating":  67,
+        "attributes":  {
+                           "speed":  67,
+                           "shooting":  59,
+                           "defending":  75,
+                           "passing":  67,
+                           "weakFoot":  55
+                       },
+        "notes":  "Good communicator.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  65,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  67,
+                                  "note":  "Current seed rating"
+                              }
+                          ],
+        "createdOrder":  14
+    },
+    {
+        "id":  "653f5f36-e6c7-4012-b34f-fb5e1ed1f105",
+        "name":  "Diego Cruz",
+        "age":  32,
+        "primaryPosition":  "Midfielder",
+        "secondaryPosition":  "Defender",
+        "rating":  79,
+        "attributes":  {
+                           "speed":  77,
+                           "shooting":  79,
+                           "defending":  79,
+                           "passing":  86,
+                           "weakFoot":  67
+                       },
+        "notes":  "Balanced all-around player.",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-05-17",
+                                  "rating":  77,
+                                  "note":  "Seed baseline"
+                              },
+                              {
+                                  "date":  "2026-05-31",
+                                  "rating":  79,
+                                  "note":  "Current seed rating"
+                              }
+                          ],
+        "createdOrder":  15
+    },
+    {
+        "id":  "edecc331-3161-49aa-8a6e-25679d8628f8",
+        "name":  "Jad Othman",
+        "age":  21,
+        "primaryPosition":  "Midfielder",
+        "secondaryPosition":  "Forward",
+        "rating":  95,
+        "attributes":  {
+                           "speed":  96,
+                           "shooting":  90,
+                           "defending":  95,
+                           "passing":  85,
+                           "weakFoot":  84
+                       },
+        "notes":  "",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  95,
+                                  "note":  "Initial rating"
+                              }
+                          ],
+        "createdOrder":  16
+    },
+    {
+        "id":  "9b26de8e-0f6f-4aea-b0ce-e64f4ae96477",
+        "name":  "Danny Othman",
+        "age":  28,
+        "primaryPosition":  "Forward",
+        "secondaryPosition":  "Midfielder",
+        "rating":  66,
+        "attributes":  {
+                           "speed":  87,
+                           "shooting":  90,
+                           "defending":  86,
+                           "passing":  81,
+                           "weakFoot":  86
+                       },
+        "notes":  "",
+        "active":  true,
+        "ratingHistory":  [
+                              {
+                                  "date":  "2026-06-09",
+                                  "rating":  66,
+                                  "note":  "Initial rating"
+                              }
+                          ],
+        "createdOrder":  17
+    }
+];
 
 const seedState = {
   players: seedPlayers,
