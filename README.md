@@ -36,7 +36,9 @@ See `DEPLOY.md` for the GitHub and Render steps.
 - Simple access modes:
   - Admin passcode: `sunday-admin`
   - Viewer passcode: `soccer-viewer`
+- Admin data export/import tools for temporarily turning local edits into shared seed data
 - Balanced team creation with goalkeeper separation
+- 11v11 full-field team creation defaults
 - Drag-and-drop team edits after teams are created
 - Game day score sheet with goals, assists, saves, clean sheets, cards, notes, and rating adjustments
 - Game history

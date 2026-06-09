@@ -47,6 +47,26 @@ button.secondary {
   color: var(--text);
 }
 
+.file-button {
+  align-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.file-button.secondary {
+  background: #e4ece6;
+  color: var(--text);
+}
+
+.file-button input {
+  display: none;
+}
+
 button.danger {
   background: var(--danger);
 }

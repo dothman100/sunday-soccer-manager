@@ -94,6 +94,48 @@ function requireAdmin() {
   return false;
 }
 
+function exportCurrentData() {
+  if (!requireAdmin()) return;
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: "sunday-soccer-manager",
+    version: 1,
+    state: normalizeState(state)
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `sunday-soccer-data-${today()}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importCurrentData(file) {
+  if (!requireAdmin() || !file) return;
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      const importedState = parsed.state || parsed;
+      if (!Array.isArray(importedState.players)) throw new Error("Missing players array");
+      state = normalizeState({
+        ...seedState,
+        ...importedState,
+        accessRole: state.accessRole,
+        view: "dashboard"
+      });
+      saveState();
+      render();
+    } catch (error) {
+      alert("Could not import that file. Please use a Sunday Soccer export JSON file.");
+    }
+  });
+  reader.readAsText(file);
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -330,7 +372,22 @@ function renderDashboard() {
         </div>
       </div>
     </section>
+    ${isAdmin() ? `
+      <section class="panel" style="margin-top:14px">
+        <div class="section-head"><h2>Admin Data Tools</h2><span class="muted">Use this to turn your edited roster into shared seed data.</span></div>
+        <div class="actions">
+          <button id="exportDataButton">Export current data</button>
+          <label class="file-button secondary">Import data<input id="importDataInput" type="file" accept="application/json" /></label>
+        </div>
+        <p class="muted">After you finish entering the real player pool, export the JSON and send it here. I can bake it into the app so teammates see that roster when they open the link.</p>
+      </section>
+    ` : ""}
   `, "Dashboard");
+
+  document.getElementById("exportDataButton")?.addEventListener("click", exportCurrentData);
+  document.getElementById("importDataInput")?.addEventListener("change", (event) => {
+    importCurrentData(event.target.files?.[0]);
+  });
 }
 
 function renderPlayers() {
@@ -521,7 +578,7 @@ function renderTeams() {
     ${isAdmin() ? `<section class="panel">
       <form id="teamForm" class="form-grid">
         <label>Number of teams<input name="teamCount" type="number" min="2" max="6" value="${state.lastTeamSettings?.teamCount || 2}" /></label>
-        <label>Players per team<input name="playersPerTeam" type="number" min="2" max="12" value="${state.lastTeamSettings?.playersPerTeam || 7}" /></label>
+        <label>Players per team<input name="playersPerTeam" type="number" min="2" max="12" value="11" /></label>
         <label class="wide"><span><input name="separateGks" type="checkbox" ${state.lastTeamSettings?.separateGks === false ? "" : "checked"} style="width:auto" /> Separate goalkeepers evenly</span></label>
         <div class="actions wide">
           <button type="submit">Create balanced teams</button>
@@ -550,7 +607,7 @@ function renderTeams() {
 
   document.getElementById("reshuffle").addEventListener("click", () => {
     if (!requireAdmin()) return;
-    const settings = state.lastTeamSettings || { teamCount: 2, playersPerTeam: 7, separateGks: true };
+    const settings = state.lastTeamSettings || { teamCount: 2, playersPerTeam: 11, separateGks: true };
     setState({ generatedTeams: createBalancedTeams(settings, state.shuffleCount + 1), shuffleCount: state.shuffleCount + 1 });
   });
   bindDragAndDrop();
