@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: sunday-soccer-manager
+    runtime: static
+    buildCommand: echo "No build step needed for static MVP"
+    staticPublishPath: .
+    autoDeployTrigger: commit
+    envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
