@@ -31,7 +31,11 @@ See `DEPLOY.md` for the GitHub and Render steps.
 - Add, edit, delete, activate, and deactivate players
 - Player ratings from 1 to 100
 - FIFA-style player attributes: speed, shooting, defending, and passing
+- Weak Foot player attribute
 - Overall rating can be set manually or from the attribute average
+- Simple access modes:
+  - Admin passcode: `sunday-admin`
+  - Viewer passcode: `soccer-viewer`
 - Balanced team creation with goalkeeper separation
 - Drag-and-drop team edits after teams are created
 - Game day score sheet with goals, assists, saves, clean sheets, cards, notes, and rating adjustments
@@ -48,3 +52,5 @@ Recommended next backend/auth milestone:
 - Admin login for you
 - Admin-only player edits, team creation, and score entry
 - Read-only teammate views for rosters, history, and stats
+
+Important: the current login is a front-end-only access gate for the static MVP. It is useful for testing admin/viewer workflows, but real security requires the planned backend database and server-side authentication.

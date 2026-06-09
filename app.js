@@ -1,11 +1,21 @@
 const STORAGE_KEY = "sunday-soccer-manager-v1";
 const positions = ["GK", "Defender", "Midfielder", "Forward"];
-const attributeKeys = ["speed", "shooting", "defending", "passing"];
+const ADMIN_PASSCODE = "sunday-admin";
+const VIEWER_PASSCODE = "soccer-viewer";
+const attributeKeys = ["speed", "shooting", "defending", "passing", "weakFoot"];
 const attributeLabels = {
   speed: "Speed",
   shooting: "Shooting",
   defending: "Defending",
-  passing: "Passing"
+  passing: "Passing",
+  weakFoot: "Weak Foot"
+};
+const attributeShortLabels = {
+  speed: "SPD",
+  shooting: "SHO",
+  defending: "DEF",
+  passing: "PAS",
+  weakFoot: "WF"
 };
 
 const seedPlayers = [
@@ -48,6 +58,7 @@ const seedState = {
   games: [],
   selectedPlayerId: seedPlayers[0].id,
   view: "dashboard",
+  accessRole: "",
   shuffleCount: 0
 };
 
@@ -73,6 +84,16 @@ function setState(patch) {
   render();
 }
 
+function isAdmin() {
+  return state.accessRole === "admin";
+}
+
+function requireAdmin() {
+  if (isAdmin()) return true;
+  alert("Viewer access is read-only. Log in as admin to make changes.");
+  return false;
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -92,7 +113,8 @@ function buildDefaultAttributes(rating, primaryPosition) {
     speed: base,
     shooting: base,
     defending: base,
-    passing: base
+    passing: base,
+    weakFoot: Math.max(35, base - 12)
   };
   if (primaryPosition === "GK" || primaryPosition === "Defender") {
     attributes.defending = clampRating(base + 8);
@@ -195,6 +217,40 @@ function navButton(id, label) {
   return `<button class="${state.view === id ? "active" : ""}" data-view="${id}">${label}</button>`;
 }
 
+function renderLogin() {
+  document.getElementById("app").innerHTML = `
+    <main class="login-page">
+      <section class="login-panel">
+        <div class="brand-mark">Sunday Soccer</div>
+        <h1>Sign in</h1>
+        <p class="muted">Choose admin for full control or viewer for read-only teammate access.</p>
+        <form id="loginForm" class="grid">
+          <label>Access level
+            <select name="role">
+              <option value="viewer">Viewer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+          <label>Passcode<input name="passcode" type="password" required autocomplete="current-password" /></label>
+          <button type="submit">Enter app</button>
+          <div class="notice">Static MVP note: this is a simple front-end access gate. Use the upcoming database/auth version for real security.</div>
+        </form>
+      </section>
+    </main>
+  `;
+  document.getElementById("loginForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const valid = (data.role === "admin" && data.passcode === ADMIN_PASSCODE)
+      || (data.role === "viewer" && data.passcode === VIEWER_PASSCODE);
+    if (!valid) {
+      alert("That passcode does not match the selected access level.");
+      return;
+    }
+    setState({ accessRole: data.role });
+  });
+}
+
 function layout(content, title, actions = "") {
   document.getElementById("app").innerHTML = `
     <div class="app-shell">
@@ -218,8 +274,13 @@ function layout(content, title, actions = "") {
             <h1>${title}</h1>
             <div class="muted">${activePlayers().length} active players | ${state.games.length} saved games</div>
           </div>
-          <div class="actions">${actions}</div>
+          <div class="actions">
+            <span class="role-badge ${isAdmin() ? "admin" : "viewer"}">${isAdmin() ? "Admin" : "Viewer"}</span>
+            ${actions}
+            <button class="secondary" id="logoutButton">Log out</button>
+          </div>
         </div>
+        ${isAdmin() ? "" : `<div class="notice access-notice">Viewer mode: you can view players, teams, stats, and history. Editing and team creation are admin-only.</div>`}
         ${content}
       </main>
     </div>
@@ -231,6 +292,7 @@ function bindGlobalEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => setState({ view: button.dataset.view }));
   });
+  document.getElementById("logoutButton")?.addEventListener("click", () => setState({ accessRole: "" }));
 }
 
 function renderDashboard() {
@@ -273,7 +335,7 @@ function renderDashboard() {
 
 function renderPlayers() {
   layout(`
-    <section class="panel">
+    ${isAdmin() ? `<section class="panel">
       <div class="section-head"><h2>Add or Edit Player</h2><button id="resetPlayers" class="small secondary">Reset sample data</button></div>
       <form id="playerForm" class="form-grid">
         <input type="hidden" name="id" />
@@ -298,7 +360,7 @@ function renderPlayers() {
           <button type="button" class="secondary" id="clearPlayerForm">Clear</button>
         </div>
       </form>
-    </section>
+    </section>` : ""}
     <section class="panel" style="margin-top:14px">
       <div class="toolbar">
         <label>Search<input id="playerSearch" placeholder="Name, position, notes" /></label>
@@ -333,10 +395,10 @@ function renderPlayers() {
         <td>${renderAttributePills(player.attributes)}</td>
         <td><span class="pill ${player.active ? "green" : "gray"}">${player.active ? "Active" : "Inactive"}</span></td>
         <td>${escapeHtml(player.notes)}</td>
-        <td class="actions">
+        <td class="actions">${isAdmin() ? `
           <button class="small secondary" data-edit-player="${player.id}">Edit</button>
           <button class="small danger" data-delete-player="${player.id}">Delete</button>
-        </td>
+        ` : `<span class="muted">Read-only</span>`}</td>
       </tr>
     `).join("");
 
@@ -345,14 +407,30 @@ function renderPlayers() {
     });
     document.querySelectorAll("[data-delete-player]").forEach((button) => {
       button.addEventListener("click", () => {
+        if (!requireAdmin()) return;
         const players = state.players.filter((player) => player.id !== button.dataset.deletePlayer);
         setState({ players });
       });
     });
   };
 
+  if (!isAdmin()) {
+    ["playerSearch", "statusFilter", "positionFilter"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", renderRows);
+    });
+    document.getElementById("clearFilters").addEventListener("click", () => {
+      document.getElementById("playerSearch").value = "";
+      document.getElementById("statusFilter").value = "all";
+      document.getElementById("positionFilter").value = "all";
+      renderRows();
+    });
+    renderRows();
+    return;
+  }
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!requireAdmin()) return;
     const data = Object.fromEntries(new FormData(form));
     const existing = data.id ? playerById(data.id) : null;
     const attributes = Object.fromEntries(attributeKeys.map((key) => [key, clampRating(data[key])]));
@@ -386,7 +464,10 @@ function renderPlayers() {
     form.reset();
     fillAttributeInputs(buildDefaultAttributes(70, "Midfielder"), form);
   });
-  document.getElementById("resetPlayers").addEventListener("click", () => setState({ ...seedState }));
+  document.getElementById("resetPlayers").addEventListener("click", () => {
+    if (!requireAdmin()) return;
+    setState({ ...seedState, accessRole: state.accessRole });
+  });
   document.getElementById("useAttributeAverage").addEventListener("click", () => {
     form.elements.rating.value = attributeAverage(Object.fromEntries(attributeKeys.map((key) => [key, form.elements[key].value])));
   });
@@ -428,7 +509,7 @@ function fillAttributeInputs(attributes, form = document.getElementById("playerF
 
 function renderAttributePills(attributes) {
   const safeAttributes = attributes || {};
-  return `<div class="attribute-pills">${attributeKeys.map((key) => `<span class="pill gray">${attributeLabels[key].slice(0, 3)} ${clampRating(safeAttributes[key])}</span>`).join("")}</div>`;
+  return `<div class="attribute-pills">${attributeKeys.map((key) => `<span class="pill gray">${attributeShortLabels[key]} ${clampRating(safeAttributes[key])}</span>`).join("")}</div>`;
 }
 
 function optionHtml(value) {
@@ -437,7 +518,7 @@ function optionHtml(value) {
 
 function renderTeams() {
   layout(`
-    <section class="panel">
+    ${isAdmin() ? `<section class="panel">
       <form id="teamForm" class="form-grid">
         <label>Number of teams<input name="teamCount" type="number" min="2" max="6" value="${state.lastTeamSettings?.teamCount || 2}" /></label>
         <label>Players per team<input name="playersPerTeam" type="number" min="2" max="12" value="${state.lastTeamSettings?.playersPerTeam || 7}" /></label>
@@ -447,14 +528,17 @@ function renderTeams() {
           <button type="button" id="reshuffle" class="secondary" ${state.generatedTeams.length ? "" : "disabled"}>Reshuffle</button>
         </div>
       </form>
-    </section>
+    </section>` : ""}
     <section style="margin-top:14px">
-      ${state.generatedTeams.length ? renderTeamBoard(state.generatedTeams) : `<div class="notice">Generate teams from the active player pool. You can drag players between teams after creation.</div>`}
+      ${state.generatedTeams.length ? renderTeamBoard(state.generatedTeams) : `<div class="notice">${isAdmin() ? "Generate teams from the active player pool. You can drag players between teams after creation." : "No generated teams are available in this browser yet."}</div>`}
     </section>
   `, "Create Teams");
 
+  if (!isAdmin()) return;
+
   document.getElementById("teamForm").addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!requireAdmin()) return;
     const data = Object.fromEntries(new FormData(event.currentTarget));
     const settings = {
       teamCount: Number(data.teamCount),
@@ -465,6 +549,7 @@ function renderTeams() {
   });
 
   document.getElementById("reshuffle").addEventListener("click", () => {
+    if (!requireAdmin()) return;
     const settings = state.lastTeamSettings || { teamCount: 2, playersPerTeam: 7, separateGks: true };
     setState({ generatedTeams: createBalancedTeams(settings, state.shuffleCount + 1), shuffleCount: state.shuffleCount + 1 });
   });
@@ -546,6 +631,7 @@ function renderTeamBoard(teams) {
 }
 
 function bindDragAndDrop() {
+  if (!isAdmin()) return;
   document.querySelectorAll(".player-chip").forEach((chip) => {
     chip.addEventListener("dragstart", (event) => {
       event.dataTransfer.setData("text/plain", chip.dataset.playerId);
@@ -576,6 +662,14 @@ function bindDragAndDrop() {
 function renderScoreSheet() {
   const teams = state.generatedTeams;
   const allTeamPlayers = teams.flatMap((team) => team.playerIds);
+  if (!isAdmin()) {
+    layout(`
+      <section class="panel">
+        <div class="notice">Viewer access can review saved game history and player stats, but score entry is admin-only.</div>
+      </section>
+    `, "Game Day Score Sheet");
+    return;
+  }
   layout(`
     ${teams.length ? "" : `<div class="notice">Create teams first, then return here to save a game day score sheet.</div>`}
     <form id="scoreForm" class="grid">
@@ -616,6 +710,7 @@ function renderScoreSheet() {
 
   document.getElementById("scoreForm").addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!requireAdmin()) return;
     const data = Object.fromEntries(new FormData(event.currentTarget));
     const date = data.date || today();
     const game = {
@@ -716,14 +811,14 @@ function renderProfile() {
               </div>
             `).join("")}
           </div>
-          <form id="profileRatingForm" class="profile-rating-form">
+          ${isAdmin() ? `<form id="profileRatingForm" class="profile-rating-form">
             <label>Overall rating<input name="rating" type="number" min="1" max="100" value="${selected.rating}" /></label>
             ${attributeKeys.map((key) => `<label>${attributeLabels[key]}<input name="${key}" type="number" min="1" max="100" value="${selectedAttributes[key]}" /></label>`).join("")}
             <div class="actions wide">
               <button type="button" class="secondary" id="profileUseAverage">Use attribute average</button>
               <button type="submit">Save ratings</button>
             </div>
-          </form>
+          </form>` : ""}
         ` : ""}
       </div>
       <div class="grid">
@@ -762,6 +857,7 @@ function renderProfile() {
   });
   document.getElementById("profileRatingForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!requireAdmin()) return;
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form));
     const rating = clampRating(data.rating);
@@ -783,6 +879,10 @@ function renderProfile() {
 }
 
 function render() {
+  if (!state.accessRole) {
+    renderLogin();
+    return;
+  }
   const routes = {
     dashboard: renderDashboard,
     players: renderPlayers,

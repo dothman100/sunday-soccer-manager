@@ -86,6 +86,33 @@ label {
   font-weight: 700;
 }
 
+.login-page {
+  align-items: center;
+  background: linear-gradient(135deg, #163421, #1f5f83);
+  display: grid;
+  min-height: 100vh;
+  padding: 18px;
+}
+
+.login-panel {
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 14px;
+  margin: 0 auto;
+  max-width: 430px;
+  padding: 24px;
+  width: 100%;
+}
+
+.brand-mark {
+  color: var(--accent);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;
@@ -245,6 +272,30 @@ h3 {
   gap: 8px;
 }
 
+.role-badge {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 7px 11px;
+}
+
+.role-badge.admin {
+  background: #dcefe4;
+  color: #16643d;
+}
+
+.role-badge.viewer {
+  background: #dcebf2;
+  color: #185879;
+}
+
+.access-notice {
+  margin-bottom: 14px;
+}
+
 .attribute-editor {
   background: var(--panel-2);
   border: 1px solid var(--line);
@@ -273,7 +324,7 @@ h3 {
 
 table {
   border-collapse: collapse;
-  min-width: 760px;
+  min-width: 880px;
   width: 100%;
 }
 
