@@ -102,15 +102,21 @@ function exportCurrentData() {
     version: 1,
     state: normalizeState(state)
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const json = JSON.stringify(payload, null, 2);
+  const output = document.getElementById("exportOutput");
+  const textarea = document.getElementById("exportJson");
+  const downloadLink = document.getElementById("downloadExportLink");
+  const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `sunday-soccer-data-${today()}.json`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  if (output && textarea && downloadLink) {
+    output.hidden = false;
+    textarea.value = json;
+    textarea.focus();
+    textarea.select();
+    downloadLink.href = url;
+    downloadLink.download = `sunday-soccer-data-${today()}.json`;
+    downloadLink.textContent = `Download sunday-soccer-data-${today()}.json`;
+  }
 }
 
 function importCurrentData(file) {
@@ -380,6 +386,11 @@ function renderDashboard() {
           <label class="file-button secondary">Import data<input id="importDataInput" type="file" accept="application/json" /></label>
         </div>
         <p class="muted">After you finish entering the real player pool, export the JSON and send it here. I can bake it into the app so teammates see that roster when they open the link.</p>
+        <div id="exportOutput" class="export-output" hidden>
+          <div class="section-head"><h3>Export Ready</h3><a id="downloadExportLink" class="download-link" href="#">Download JSON</a></div>
+          <textarea id="exportJson" readonly></textarea>
+          <p class="muted">If the download does not start, copy everything in this box and send it here.</p>
+        </div>
       </section>
     ` : ""}
   `, "Dashboard");
