@@ -1,6 +1,6 @@
 # Sunday Soccer Manager MVP
 
-A simple local web app for managing Sunday pickup soccer games. It runs as static files and stores data in your browser with `localStorage`, so there is no login, package install, or database setup yet.
+A simple web app for managing Sunday pickup soccer games. The deployed version runs on a small Node server so players can log in and mark shared Sunday availability.
 
 ## Run locally
 
@@ -10,7 +10,7 @@ Option 2: serve the folder locally:
 
 ```powershell
 cd C:\Users\user\Documents\Codex\2026-06-09\build-me-a-simple-web-app\outputs\sunday-soccer-mvp
-python -m http.server 4173
+node server.js
 ```
 
 Then open:
@@ -37,6 +37,8 @@ See `DEPLOY.md` for the GitHub and Render steps.
   - Admin passcode: `sunday-admin`
   - Viewer passcode: `soccer-viewer`
 - Admin data export/import tools for temporarily turning local edits into shared seed data
+- Shared Sunday availability/RSVP board
+- Player email/password logins created by admin
 - Balanced team creation with goalkeeper separation
 - 11v11 full-field team creation defaults
 - Drag-and-drop team edits after teams are created
@@ -55,4 +57,4 @@ Recommended next backend/auth milestone:
 - Admin-only player edits, team creation, and score entry
 - Read-only teammate views for rosters, history, and stats
 
-Important: the current login is a front-end-only access gate for the static MVP. It is useful for testing admin/viewer workflows, but real security requires the planned backend database and server-side authentication.
+No-cost deployment note: this version uses the free Render web service with file-based storage. It lets multiple people share data through the same link, but it is not as durable as paid Postgres. A Render redeploy/restart can reset server-side changes, so export important roster data before big updates.

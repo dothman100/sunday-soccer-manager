@@ -1,14 +1,13 @@
 services:
   - type: web
     name: sunday-soccer-manager
-    runtime: static
-    buildCommand: echo "No build step needed for static MVP"
-    staticPublishPath: .
+    runtime: node
+    plan: free
+    buildCommand: echo "No dependencies to install"
+    startCommand: node server.js
     autoDeployTrigger: commit
     envVars:
-      - key: SKIP_INSTALL_DEPS
-        value: "true"
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      - key: ADMIN_EMAIL
+        value: admin@sundaysoccer.local
+      - key: ADMIN_PASSWORD
+        value: sunday-admin

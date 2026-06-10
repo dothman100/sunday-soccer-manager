@@ -498,6 +498,17 @@ th {
   padding: 12px;
 }
 
+.availability-row {
+  align-items: center;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr auto;
+  padding: 12px;
+}
+
 .profile-layout {
   display: grid;
   gap: 14px;
@@ -628,5 +639,10 @@ th {
   .topbar {
     align-items: start;
     flex-direction: column;
+  }
+
+  .availability-row {
+    align-items: start;
+    grid-template-columns: 1fr;
   }
 }

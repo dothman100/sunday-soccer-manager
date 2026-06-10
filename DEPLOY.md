@@ -1,6 +1,6 @@
 # Deploy Sunday Soccer Manager
 
-This MVP is ready to deploy as a Render Static Site from GitHub.
+This MVP is ready to deploy as a free Render Web Service from GitHub.
 
 ## 1. Push to GitHub
 
@@ -36,11 +36,11 @@ Render can deploy from the included `render.yaml` blueprint.
 4. Render should detect `render.yaml`.
 5. Apply the blueprint.
 
-The service will publish the current folder as a static site and give you an `onrender.com` URL.
+The service will run `node server.js` and give you an `onrender.com` URL.
 
 ## Current MVP note
 
-This version stores data in each browser's `localStorage`. That is fine for sharing a demo link, but teammates will not share the same live database yet.
+This no-cost version stores shared data in a JSON file on the free Render web service. That is useful for testing shared RSVP and player logins, but it is less durable than Postgres and can reset after redeploys or service restarts.
 
 Before using it as the real team system, the next upgrade should add:
 

@@ -17,6 +17,9 @@ const attributeShortLabels = {
   passing: "PAS",
   weakFoot: "WF"
 };
+let currentUser = null;
+let apiAvailable = false;
+let availabilityCache = null;
 
 const seedPlayers = [
     {
@@ -485,6 +488,12 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (apiAvailable && isAdmin()) {
+    apiRequest("/api/state", {
+      method: "POST",
+      body: JSON.stringify({ state })
+    }).catch(() => {});
+  }
 }
 
 function setState(patch) {
@@ -494,13 +503,24 @@ function setState(patch) {
 }
 
 function isAdmin() {
-  return state.accessRole === "admin";
+  return state.accessRole === "admin" || currentUser?.role === "admin";
 }
 
 function requireAdmin() {
   if (isAdmin()) return true;
   alert("Viewer access is read-only. Log in as admin to make changes.");
   return false;
+}
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { "content-type": "application/json", ...(options.headers || {}) },
+    credentials: "same-origin",
+    ...options
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Request failed");
+  return data;
 }
 
 function exportCurrentData() {
@@ -674,37 +694,51 @@ function navButton(id, label) {
   return `<button class="${state.view === id ? "active" : ""}" data-view="${id}">${label}</button>`;
 }
 
+async function refreshSharedState() {
+  const result = await apiRequest("/api/state");
+  apiAvailable = true;
+  currentUser = result.user;
+  state = normalizeState({
+    ...seedState,
+    ...result.state,
+    accessRole: currentUser?.role === "admin" ? "admin" : "player",
+    selectedPlayerId: currentUser?.playerId || result.state.selectedPlayerId || seedState.selectedPlayerId
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  render();
+}
+
 function renderLogin() {
   document.getElementById("app").innerHTML = `
     <main class="login-page">
       <section class="login-panel">
         <div class="brand-mark">Sunday Soccer</div>
         <h1>Sign in</h1>
-        <p class="muted">Choose admin for full control or viewer for read-only teammate access.</p>
+        <p class="muted">Admin manages the roster and teams. Players can mark IN or OUT for Sunday.</p>
         <form id="loginForm" class="grid">
-          <label>Access level
-            <select name="role">
-              <option value="viewer">Viewer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-          <label>Passcode<input name="passcode" type="password" required autocomplete="current-password" /></label>
+          <label>Email<input name="email" type="email" required autocomplete="username" value="admin@sundaysoccer.local" /></label>
+          <label>Password<input name="password" type="password" required autocomplete="current-password" /></label>
           <button type="submit">Enter app</button>
-          <div class="notice">Static MVP note: this is a simple front-end access gate. Use the upcoming database/auth version for real security.</div>
+          <div class="notice">Admin default: admin@sundaysoccer.local / sunday-admin. Admin can create player logins from Player Pool.</div>
         </form>
       </section>
     </main>
   `;
-  document.getElementById("loginForm").addEventListener("submit", (event) => {
+  document.getElementById("loginForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
-    const valid = (data.role === "admin" && data.passcode === ADMIN_PASSCODE)
-      || (data.role === "viewer" && data.passcode === VIEWER_PASSCODE);
-    if (!valid) {
-      alert("That passcode does not match the selected access level.");
-      return;
+    try {
+      const result = await apiRequest("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ email: data.email, password: data.password })
+      });
+      currentUser = result.user;
+      state.accessRole = currentUser.role === "admin" ? "admin" : "player";
+      if (currentUser.playerId) state.selectedPlayerId = currentUser.playerId;
+      await refreshSharedState();
+    } catch (error) {
+      alert(error.message || "Could not sign in.");
     }
-    setState({ accessRole: data.role });
   });
 }
 
@@ -718,6 +752,7 @@ function layout(content, title, actions = "") {
         </div>
         <nav class="nav">
           ${navButton("dashboard", "Dashboard")}
+          ${navButton("availability", "Availability")}
           ${navButton("players", "Player Pool")}
           ${navButton("teams", "Create Teams")}
           ${navButton("score", "Game Day")}
@@ -732,12 +767,12 @@ function layout(content, title, actions = "") {
             <div class="muted">${activePlayers().length} active players | ${state.games.length} saved games</div>
           </div>
           <div class="actions">
-            <span class="role-badge ${isAdmin() ? "admin" : "viewer"}">${isAdmin() ? "Admin" : "Viewer"}</span>
+            <span class="role-badge ${isAdmin() ? "admin" : "viewer"}">${isAdmin() ? "Admin" : "Player"}</span>
             ${actions}
             <button class="secondary" id="logoutButton">Log out</button>
           </div>
         </div>
-        ${isAdmin() ? "" : `<div class="notice access-notice">Viewer mode: you can view players, teams, stats, and history. Editing and team creation are admin-only.</div>`}
+        ${isAdmin() ? "" : `<div class="notice access-notice">Player mode: mark your Sunday availability and view roster, teams, stats, and history. Editing and team creation are admin-only.</div>`}
         ${content}
       </main>
     </div>
@@ -749,7 +784,11 @@ function bindGlobalEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => setState({ view: button.dataset.view }));
   });
-  document.getElementById("logoutButton")?.addEventListener("click", () => setState({ accessRole: "" }));
+  document.getElementById("logoutButton")?.addEventListener("click", async () => {
+    if (apiAvailable) await apiRequest("/api/logout", { method: "POST" }).catch(() => {});
+    currentUser = null;
+    setState({ accessRole: "" });
+  });
 }
 
 function renderDashboard() {
@@ -807,6 +846,94 @@ function renderDashboard() {
   document.getElementById("exportDataButton")?.addEventListener("click", exportCurrentData);
   document.getElementById("importDataInput")?.addEventListener("change", (event) => {
     importCurrentData(event.target.files?.[0]);
+  });
+}
+
+function availabilityCounts(availability = availabilityCache) {
+  const responses = availability?.responses || {};
+  return activePlayers().reduce((counts, player) => {
+    const status = responses[player.id]?.status || "unknown";
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, { in: 0, out: 0, unknown: 0 });
+}
+
+function renderAvailability() {
+  const counts = availabilityCounts();
+  layout(`
+    <section class="grid four">
+      <div class="card stat"><span class="muted">Next Sunday</span><b>${availabilityCache?.date || "Loading"}</b></div>
+      <div class="card stat"><span class="muted">IN</span><b id="availabilityIn">${counts.in || 0}</b></div>
+      <div class="card stat"><span class="muted">OUT</span><b id="availabilityOut">${counts.out || 0}</b></div>
+      <div class="card stat"><span class="muted">No reply</span><b id="availabilityUnknown">${counts.unknown || activePlayers().length}</b></div>
+    </section>
+    <section class="panel" style="margin-top:14px">
+      <div class="section-head">
+        <h2>Sunday Availability</h2>
+        ${isAdmin() ? `<button class="small secondary" id="resetAvailability">Reset Sunday RSVPs</button>` : ""}
+      </div>
+      <div id="availabilityContent" class="history-list">
+        <div class="notice">Loading shared availability...</div>
+      </div>
+    </section>
+  `, "Availability");
+
+  document.getElementById("resetAvailability")?.addEventListener("click", async () => {
+    if (!requireAdmin()) return;
+    await apiRequest("/api/availability/reset", { method: "POST" });
+    await loadAvailability();
+  });
+  loadAvailability();
+}
+
+async function loadAvailability() {
+  try {
+    const result = await apiRequest("/api/availability");
+    availabilityCache = result.availability;
+    renderAvailabilityRows();
+  } catch (error) {
+    document.getElementById("availabilityContent").innerHTML = `<div class="notice">Could not load availability. ${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function renderAvailabilityRows() {
+  const content = document.getElementById("availabilityContent");
+  if (!content || !availabilityCache) return;
+  const counts = availabilityCounts();
+  document.getElementById("availabilityIn").textContent = counts.in || 0;
+  document.getElementById("availabilityOut").textContent = counts.out || 0;
+  document.getElementById("availabilityUnknown").textContent = counts.unknown || 0;
+  const responses = availabilityCache.responses || {};
+  const playerRows = activePlayers().map((player) => {
+    const response = responses[player.id] || { status: "unknown", note: "" };
+    const canEdit = isAdmin() || currentUser?.playerId === player.id;
+    return `
+      <div class="availability-row">
+        <div>
+          <strong>${escapeHtml(player.name)}</strong>
+          <span class="pill ${response.status === "in" ? "green" : response.status === "out" ? "red" : "gray"}">${response.status === "unknown" ? "No reply" : response.status.toUpperCase()}</span>
+          ${response.note ? `<div class="muted">${escapeHtml(response.note)}</div>` : ""}
+        </div>
+        <div class="actions">
+          ${canEdit ? `
+            <button class="small" data-rsvp="${player.id}" data-status="in">IN</button>
+            <button class="small danger" data-rsvp="${player.id}" data-status="out">OUT</button>
+            <button class="small secondary" data-rsvp="${player.id}" data-status="unknown">Clear</button>
+          ` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+  content.innerHTML = playerRows;
+  document.querySelectorAll("[data-rsvp]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const note = button.dataset.status === "out" ? prompt("Optional note for being out:", "") || "" : "";
+      await apiRequest("/api/availability", {
+        method: "POST",
+        body: JSON.stringify({ playerId: button.dataset.rsvp, status: button.dataset.status, note })
+      });
+      await loadAvailability();
+    });
   });
 }
 
@@ -874,6 +1001,7 @@ function renderPlayers() {
         <td>${escapeHtml(player.notes)}</td>
         <td class="actions">${isAdmin() ? `
           <button class="small secondary" data-edit-player="${player.id}">Edit</button>
+          <button class="small secondary" data-login-player="${player.id}">Login</button>
           <button class="small danger" data-delete-player="${player.id}">Delete</button>
         ` : `<span class="muted">Read-only</span>`}</td>
       </tr>
@@ -887,6 +1015,25 @@ function renderPlayers() {
         if (!requireAdmin()) return;
         const players = state.players.filter((player) => player.id !== button.dataset.deletePlayer);
         setState({ players });
+      });
+    });
+    document.querySelectorAll("[data-login-player]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!requireAdmin()) return;
+        const player = playerById(button.dataset.loginPlayer);
+        const email = prompt(`Email login for ${player.name}:`, "");
+        if (!email) return;
+        const password = prompt(`Temporary password for ${player.name}:`, "");
+        if (!password) return;
+        try {
+          await apiRequest("/api/users/player", {
+            method: "POST",
+            body: JSON.stringify({ playerId: player.id, email, password })
+          });
+          alert(`${player.name} can now log in with ${email}.`);
+        } catch (error) {
+          alert(error.message || "Could not save player login.");
+        }
       });
     });
   };
@@ -1362,6 +1509,7 @@ function render() {
   }
   const routes = {
     dashboard: renderDashboard,
+    availability: renderAvailability,
     players: renderPlayers,
     teams: renderTeams,
     score: renderScoreSheet,
@@ -1371,4 +1519,20 @@ function render() {
   (routes[state.view] || renderDashboard)();
 }
 
-render();
+async function initApp() {
+  try {
+    const session = await apiRequest("/api/session");
+    apiAvailable = true;
+    currentUser = session.user;
+    if (currentUser) {
+      await refreshSharedState();
+      return;
+    }
+    state = { ...state, accessRole: "" };
+  } catch (error) {
+    apiAvailable = false;
+  }
+  render();
+}
+
+initApp();
