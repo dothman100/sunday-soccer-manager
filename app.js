@@ -927,10 +927,9 @@ function renderAvailabilityRows() {
   content.innerHTML = playerRows;
   document.querySelectorAll("[data-rsvp]").forEach((button) => {
     button.addEventListener("click", async () => {
-      const note = button.dataset.status === "out" ? prompt("Optional note for being out:", "") || "" : "";
       await apiRequest("/api/availability", {
         method: "POST",
-        body: JSON.stringify({ playerId: button.dataset.rsvp, status: button.dataset.status, note })
+        body: JSON.stringify({ playerId: button.dataset.rsvp, status: button.dataset.status, note: "" })
       });
       await loadAvailability();
     });
@@ -949,6 +948,16 @@ function renderPlayers() {
         <label>Secondary position<select name="secondaryPosition"><option value="">None</option>${positions.map(optionHtml).join("")}</select></label>
         <label>Rating<input name="rating" type="number" min="1" max="100" required /></label>
         <label>Active<select name="active"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+        <div class="wide attribute-editor">
+          <div class="section-head">
+            <h3>Player login</h3>
+            <span class="muted">Optional account for RSVP access</span>
+          </div>
+          <div class="attribute-inputs">
+            <label>Login email<input name="loginEmail" type="email" placeholder="player@email.com" autocomplete="off" /></label>
+            <label>Temporary password<input name="loginPassword" type="text" placeholder="Give this to the player" autocomplete="off" /></label>
+          </div>
+        </div>
         <div class="wide attribute-editor">
           <div class="section-head">
             <h3>FIFA-style attributes</h3>
@@ -1001,7 +1010,6 @@ function renderPlayers() {
         <td>${escapeHtml(player.notes)}</td>
         <td class="actions">${isAdmin() ? `
           <button class="small secondary" data-edit-player="${player.id}">Edit</button>
-          <button class="small secondary" data-login-player="${player.id}">Login</button>
           <button class="small danger" data-delete-player="${player.id}">Delete</button>
         ` : `<span class="muted">Read-only</span>`}</td>
       </tr>
@@ -1015,25 +1023,6 @@ function renderPlayers() {
         if (!requireAdmin()) return;
         const players = state.players.filter((player) => player.id !== button.dataset.deletePlayer);
         setState({ players });
-      });
-    });
-    document.querySelectorAll("[data-login-player]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        if (!requireAdmin()) return;
-        const player = playerById(button.dataset.loginPlayer);
-        const email = prompt(`Email login for ${player.name}:`, "");
-        if (!email) return;
-        const password = prompt(`Temporary password for ${player.name}:`, "");
-        if (!password) return;
-        try {
-          await apiRequest("/api/users/player", {
-            method: "POST",
-            body: JSON.stringify({ playerId: player.id, email, password })
-          });
-          alert(`${player.name} can now log in with ${email}.`);
-        } catch (error) {
-          alert(error.message || "Could not save player login.");
-        }
       });
     });
   };
@@ -1052,7 +1041,7 @@ function renderPlayers() {
     return;
   }
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!requireAdmin()) return;
     const data = Object.fromEntries(new FormData(form));
@@ -1080,6 +1069,16 @@ function renderPlayers() {
       : [...state.players, player];
     state.players = players;
     saveState();
+    if (data.loginEmail && data.loginPassword) {
+      try {
+        await apiRequest("/api/users/player", {
+          method: "POST",
+          body: JSON.stringify({ playerId: player.id, email: data.loginEmail, password: data.loginPassword })
+        });
+      } catch (error) {
+        alert(`Player saved, but login was not saved: ${error.message}`);
+      }
+    }
     form.reset();
     renderRows();
   });

@@ -38,7 +38,7 @@ See `DEPLOY.md` for the GitHub and Render steps.
   - Viewer passcode: `soccer-viewer`
 - Admin data export/import tools for temporarily turning local edits into shared seed data
 - Shared Sunday availability/RSVP board
-- Player email/password logins created by admin
+- Player email/password logins managed from the Add/Edit Player form
 - Balanced team creation with goalkeeper separation
 - 11v11 full-field team creation defaults
 - Drag-and-drop team edits after teams are created

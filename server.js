@@ -261,14 +261,15 @@ async function handleApi(req, res) {
     if (!player) return send(res, 404, { error: "Player not found" });
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
-    if (!email || !password) return send(res, 400, { error: "Email and password required" });
+    if (!email) return send(res, 400, { error: "Email required" });
     const existing = db.users.find((entry) => entry.playerId === player.id || entry.email === email);
+    if (!existing && !password) return send(res, 400, { error: "Password required for new player login" });
     const user = existing || { id: crypto.randomUUID(), role: "player", playerId: player.id };
     user.role = "player";
     user.playerId = player.id;
     user.email = email;
     user.name = player.name;
-    user.passwordHash = hashPassword(password);
+    if (password) user.passwordHash = hashPassword(password);
     if (!existing) db.users.push(user);
     writeDb(db);
     return send(res, 200, { user: publicUser(user) });
