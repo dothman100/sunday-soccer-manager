@@ -30,8 +30,8 @@ See `DEPLOY.md` for the GitHub and Render steps.
 - Seed/sample players
 - Add, edit, delete, activate, and deactivate players
 - Player ratings from 1 to 100
-- FIFA-style player attributes: speed, shooting, defending, and passing
-- Weak Foot player attribute
+- FIFA-style outfield attributes: pace, shooting, passing, dribbling, defending, and physicality
+- Weak Foot star rating from 1 to 5
 - Goalkeeper-specific attributes: positioning, goal kicks, reflexes, handling, and diving
 - Overall rating can be set manually or from the attribute average
 - Simple access modes:

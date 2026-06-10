@@ -2,21 +2,26 @@ const STORAGE_KEY = "sunday-soccer-manager-v2";
 const positions = ["GK", "Defender", "Midfielder", "Forward"];
 const ADMIN_PASSCODE = "sunday-admin";
 const VIEWER_PASSCODE = "soccer-viewer";
-const attributeKeys = ["speed", "shooting", "defending", "passing", "weakFoot"];
+const attributeKeys = ["pace", "shooting", "passing", "dribbling", "defending", "physicality", "weakFootStars"];
 const attributeLabels = {
-  speed: "Speed",
+  pace: "Pace",
   shooting: "Shooting",
-  defending: "Defending",
   passing: "Passing",
-  weakFoot: "Weak Foot"
+  dribbling: "Dribbling",
+  defending: "Defending",
+  physicality: "Physicality",
+  weakFootStars: "Weak Foot"
 };
 const attributeShortLabels = {
-  speed: "SPD",
+  pace: "PAC",
   shooting: "SHO",
-  defending: "DEF",
   passing: "PAS",
-  weakFoot: "WF"
+  dribbling: "DRI",
+  defending: "DEF",
+  physicality: "PHY",
+  weakFootStars: "WF"
 };
+const starAttributeKeys = ["weakFootStars"];
 const gkAttributeKeys = ["positioning", "goalKicks", "reflexes", "handling", "diving"];
 const gkAttributeLabels = {
   positioning: "Positioning",
@@ -594,8 +599,17 @@ function clampRating(value) {
   return Math.max(1, Math.min(100, Number(value) || 1));
 }
 
+function clampStarRating(value) {
+  return Math.max(1, Math.min(5, Number(value) || 1));
+}
+
+function clampAttributeValue(key, value) {
+  return starAttributeKeys.includes(key) ? clampStarRating(value) : clampRating(value);
+}
+
 function attributeAverage(attributes) {
-  const keys = getAttributeKeys(attributes?.primaryPosition || attributes?.position || "");
+  const keys = getAttributeKeys(attributes?.primaryPosition || attributes?.position || "")
+    .filter((key) => !starAttributeKeys.includes(key));
   const total = keys.reduce((sum, key) => sum + clampRating(attributes?.[key]), 0);
   return Math.round(total / keys.length);
 }
@@ -628,23 +642,28 @@ function buildDefaultAttributes(rating, primaryPosition) {
     };
   }
   const attributes = {
-    speed: base,
+    pace: base,
     shooting: base,
-    defending: base,
     passing: base,
-    weakFoot: Math.max(35, base - 12)
+    dribbling: base,
+    defending: base,
+    physicality: base,
+    weakFootStars: base >= 88 ? 5 : base >= 76 ? 4 : base >= 62 ? 3 : base >= 45 ? 2 : 1
   };
-  if (primaryPosition === "GK" || primaryPosition === "Defender") {
+  if (primaryPosition === "Defender") {
     attributes.defending = clampRating(base + 8);
+    attributes.physicality = clampRating(base + 5);
     attributes.shooting = clampRating(base - 8);
   }
   if (primaryPosition === "Forward") {
     attributes.shooting = clampRating(base + 8);
+    attributes.dribbling = clampRating(base + 4);
     attributes.defending = clampRating(base - 8);
   }
   if (primaryPosition === "Midfielder") {
     attributes.passing = clampRating(base + 7);
-    attributes.speed = clampRating(base - 2);
+    attributes.dribbling = clampRating(base + 3);
+    attributes.pace = clampRating(base - 2);
   }
   return attributes;
 }
@@ -653,9 +672,16 @@ function normalizePlayer(player) {
   const attributes = player.attributes || buildDefaultAttributes(player.rating, player.primaryPosition);
   const defaultAttributes = buildDefaultAttributes(player.rating, player.primaryPosition);
   const keys = getAttributeKeys(player.primaryPosition);
+  const migratedAttributes = {
+    ...attributes,
+    pace: attributes.pace ?? attributes.speed,
+    dribbling: attributes.dribbling ?? attributes.passing ?? player.rating,
+    physicality: attributes.physicality ?? attributes.defending ?? player.rating,
+    weakFootStars: attributes.weakFootStars ?? Math.ceil(clampRating(attributes.weakFoot ?? player.rating) / 20)
+  };
   return {
     ...player,
-    attributes: Object.fromEntries(keys.map((key) => [key, clampRating(attributes[key] ?? defaultAttributes[key] ?? player.rating)]))
+    attributes: Object.fromEntries(keys.map((key) => [key, clampAttributeValue(key, migratedAttributes[key] ?? defaultAttributes[key] ?? player.rating)]))
   };
 }
 
@@ -1088,7 +1114,7 @@ function renderPlayers() {
     const data = Object.fromEntries(new FormData(form));
     const existing = data.id ? playerById(data.id) : null;
     const currentAttributeKeys = getAttributeKeys(data.primaryPosition);
-    const attributes = Object.fromEntries(currentAttributeKeys.map((key) => [key, clampRating(data[key])]));
+    const attributes = Object.fromEntries(currentAttributeKeys.map((key) => [key, clampAttributeValue(key, data[key])]));
     const rating = clampRating(data.rating);
     const player = {
       id: data.id || crypto.randomUUID(),
@@ -1176,7 +1202,7 @@ function fillPlayerForm(player) {
 function fillAttributeInputs(attributes, form = document.getElementById("playerForm")) {
   const keys = getAttributeKeys(form?.elements?.primaryPosition?.value || "");
   keys.forEach((key) => {
-    if (form?.elements[key]) form.elements[key].value = clampRating(attributes?.[key]);
+    if (form?.elements[key]) form.elements[key].value = clampAttributeValue(key, attributes?.[key]);
   });
 }
 
@@ -1185,14 +1211,22 @@ function renderAttributeInputs(primaryPosition, form = document.getElementById("
   if (!container) return;
   const keys = getAttributeKeys(primaryPosition);
   const labels = getAttributeLabels(primaryPosition);
-  container.innerHTML = keys.map((key) => `<label>${labels[key]}<input name="${key}" type="number" min="1" max="100" required /></label>`).join("");
+  container.innerHTML = keys.map((key) => {
+    if (starAttributeKeys.includes(key)) {
+      return `<label>${labels[key]}<select name="${key}" required>${[1, 2, 3, 4, 5].map((value) => `<option value="${value}">${value} / 5</option>`).join("")}</select></label>`;
+    }
+    return `<label>${labels[key]}<input name="${key}" type="number" min="1" max="100" required /></label>`;
+  }).join("");
 }
 
 function renderAttributePills(attributes, primaryPosition = "") {
   const safeAttributes = attributes || {};
   const keys = getAttributeKeys(primaryPosition);
   const shortLabels = getAttributeShortLabels(primaryPosition);
-  return `<div class="attribute-pills">${keys.map((key) => `<span class="pill gray">${shortLabels[key]} ${clampRating(safeAttributes[key])}</span>`).join("")}</div>`;
+  return `<div class="attribute-pills">${keys.map((key) => {
+    const value = clampAttributeValue(key, safeAttributes[key]);
+    return `<span class="pill gray">${shortLabels[key]} ${starAttributeKeys.includes(key) ? `${value}/5` : value}</span>`;
+  }).join("")}</div>`;
 }
 
 function optionHtml(value) {
@@ -1491,14 +1525,19 @@ function renderProfile() {
             ${selectedAttributeKeys.map((key) => `
               <div class="attribute-bar">
                 <span>${selectedAttributeLabels[key]}</span>
-                <div class="bar-track"><div class="bar-fill" style="width:${selectedAttributes[key]}%"></div></div>
-                <strong>${selectedAttributes[key]}</strong>
+                <div class="bar-track"><div class="bar-fill" style="width:${starAttributeKeys.includes(key) ? selectedAttributes[key] * 20 : selectedAttributes[key]}%"></div></div>
+                <strong>${starAttributeKeys.includes(key) ? `${selectedAttributes[key]}/5` : selectedAttributes[key]}</strong>
               </div>
             `).join("")}
           </div>
           ${isAdmin() ? `<form id="profileRatingForm" class="profile-rating-form">
             <label>Overall rating<input name="rating" type="number" min="1" max="100" value="${selected.rating}" /></label>
-            ${selectedAttributeKeys.map((key) => `<label>${selectedAttributeLabels[key]}<input name="${key}" type="number" min="1" max="100" value="${selectedAttributes[key]}" /></label>`).join("")}
+            ${selectedAttributeKeys.map((key) => {
+              if (starAttributeKeys.includes(key)) {
+                return `<label>${selectedAttributeLabels[key]}<select name="${key}">${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(selectedAttributes[key]) === value ? "selected" : ""}>${value} / 5</option>`).join("")}</select></label>`;
+              }
+              return `<label>${selectedAttributeLabels[key]}<input name="${key}" type="number" min="1" max="100" value="${selectedAttributes[key]}" /></label>`;
+            }).join("")}
             <div class="actions wide">
               <button type="button" class="secondary" id="profileUseAverage">Use attribute average</button>
               <button type="submit">Save ratings</button>
@@ -1546,7 +1585,7 @@ function renderProfile() {
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form));
     const rating = clampRating(data.rating);
-    const attributes = Object.fromEntries(selectedAttributeKeys.map((key) => [key, clampRating(data[key])]));
+    const attributes = Object.fromEntries(selectedAttributeKeys.map((key) => [key, clampAttributeValue(key, data[key])]));
     const players = state.players.map((player) => {
       if (player.id !== selected.id) return player;
       const ratingChanged = Number(player.rating) !== rating;
