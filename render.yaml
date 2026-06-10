@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sunday-soccer-manager
+    name: sunday-soccer-manager-live
     runtime: node
     plan: free
     buildCommand: echo "No dependencies to install"
