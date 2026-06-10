@@ -17,6 +17,21 @@ const attributeShortLabels = {
   passing: "PAS",
   weakFoot: "WF"
 };
+const gkAttributeKeys = ["positioning", "goalKicks", "reflexes", "handling", "diving"];
+const gkAttributeLabels = {
+  positioning: "Positioning",
+  goalKicks: "Goal Kicks",
+  reflexes: "Reflexes",
+  handling: "Handling",
+  diving: "Diving"
+};
+const gkAttributeShortLabels = {
+  positioning: "POS",
+  goalKicks: "GK",
+  reflexes: "REF",
+  handling: "HAN",
+  diving: "DIV"
+};
 let currentUser = null;
 let apiAvailable = false;
 let availabilityCache = null;
@@ -580,12 +595,38 @@ function clampRating(value) {
 }
 
 function attributeAverage(attributes) {
-  const total = attributeKeys.reduce((sum, key) => sum + clampRating(attributes?.[key]), 0);
-  return Math.round(total / attributeKeys.length);
+  const keys = getAttributeKeys(attributes?.primaryPosition || attributes?.position || "");
+  const total = keys.reduce((sum, key) => sum + clampRating(attributes?.[key]), 0);
+  return Math.round(total / keys.length);
+}
+
+function isGoalkeeperPosition(primaryPosition) {
+  return primaryPosition === "GK";
+}
+
+function getAttributeKeys(primaryPosition) {
+  return isGoalkeeperPosition(primaryPosition) ? gkAttributeKeys : attributeKeys;
+}
+
+function getAttributeLabels(primaryPosition) {
+  return isGoalkeeperPosition(primaryPosition) ? gkAttributeLabels : attributeLabels;
+}
+
+function getAttributeShortLabels(primaryPosition) {
+  return isGoalkeeperPosition(primaryPosition) ? gkAttributeShortLabels : attributeShortLabels;
 }
 
 function buildDefaultAttributes(rating, primaryPosition) {
   const base = clampRating(rating);
+  if (isGoalkeeperPosition(primaryPosition)) {
+    return {
+      positioning: clampRating(base + 4),
+      goalKicks: clampRating(base - 4),
+      reflexes: clampRating(base + 6),
+      handling: clampRating(base + 2),
+      diving: base
+    };
+  }
   const attributes = {
     speed: base,
     shooting: base,
@@ -610,9 +651,11 @@ function buildDefaultAttributes(rating, primaryPosition) {
 
 function normalizePlayer(player) {
   const attributes = player.attributes || buildDefaultAttributes(player.rating, player.primaryPosition);
+  const defaultAttributes = buildDefaultAttributes(player.rating, player.primaryPosition);
+  const keys = getAttributeKeys(player.primaryPosition);
   return {
     ...player,
-    attributes: Object.fromEntries(attributeKeys.map((key) => [key, clampRating(attributes[key] ?? player.rating)]))
+    attributes: Object.fromEntries(keys.map((key) => [key, clampRating(attributes[key] ?? defaultAttributes[key] ?? player.rating)]))
   };
 }
 
@@ -963,9 +1006,7 @@ function renderPlayers() {
             <h3>FIFA-style attributes</h3>
             <button type="button" class="small secondary" id="useAttributeAverage">Use average as rating</button>
           </div>
-          <div class="attribute-inputs">
-            ${attributeKeys.map((key) => `<label>${attributeLabels[key]}<input name="${key}" type="number" min="1" max="100" required /></label>`).join("")}
-          </div>
+          <div class="attribute-inputs" id="playerAttributeInputs"></div>
         </div>
         <label class="wide">Notes<textarea name="notes"></textarea></label>
         <div class="actions wide">
@@ -1005,7 +1046,7 @@ function renderPlayers() {
         <td>${player.age}</td>
         <td>${player.primaryPosition}${player.secondaryPosition ? ` / ${player.secondaryPosition}` : ""}</td>
         <td><span class="pill blue">${player.rating}</span></td>
-        <td>${renderAttributePills(player.attributes)}</td>
+        <td>${renderAttributePills(player.attributes, player.primaryPosition)}</td>
         <td><span class="pill ${player.active ? "green" : "gray"}">${player.active ? "Active" : "Inactive"}</span></td>
         <td>${escapeHtml(player.notes)}</td>
         <td class="actions">${isAdmin() ? `
@@ -1046,7 +1087,8 @@ function renderPlayers() {
     if (!requireAdmin()) return;
     const data = Object.fromEntries(new FormData(form));
     const existing = data.id ? playerById(data.id) : null;
-    const attributes = Object.fromEntries(attributeKeys.map((key) => [key, clampRating(data[key])]));
+    const currentAttributeKeys = getAttributeKeys(data.primaryPosition);
+    const attributes = Object.fromEntries(currentAttributeKeys.map((key) => [key, clampRating(data[key])]));
     const rating = clampRating(data.rating);
     const player = {
       id: data.id || crypto.randomUUID(),
@@ -1085,6 +1127,8 @@ function renderPlayers() {
 
   document.getElementById("clearPlayerForm").addEventListener("click", () => {
     form.reset();
+    form.elements.primaryPosition.value = "Midfielder";
+    renderAttributeInputs("Midfielder", form);
     fillAttributeInputs(buildDefaultAttributes(70, "Midfielder"), form);
   });
   document.getElementById("resetPlayers").addEventListener("click", () => {
@@ -1092,10 +1136,12 @@ function renderPlayers() {
     setState({ ...seedState, accessRole: state.accessRole });
   });
   document.getElementById("useAttributeAverage").addEventListener("click", () => {
-    form.elements.rating.value = attributeAverage(Object.fromEntries(attributeKeys.map((key) => [key, form.elements[key].value])));
+    const keys = getAttributeKeys(form.elements.primaryPosition.value);
+    form.elements.rating.value = attributeAverage({ primaryPosition: form.elements.primaryPosition.value, ...Object.fromEntries(keys.map((key) => [key, form.elements[key].value])) });
   });
   form.elements.primaryPosition.addEventListener("change", () => {
-    if (!form.elements.id.value) fillAttributeInputs(buildDefaultAttributes(form.elements.rating.value || 70, form.elements.primaryPosition.value), form);
+    renderAttributeInputs(form.elements.primaryPosition.value, form);
+    fillAttributeInputs(buildDefaultAttributes(form.elements.rating.value || 70, form.elements.primaryPosition.value), form);
   });
   form.elements.rating.addEventListener("input", () => {
     if (!form.elements.id.value) fillAttributeInputs(buildDefaultAttributes(form.elements.rating.value || 70, form.elements.primaryPosition.value), form);
@@ -1110,6 +1156,8 @@ function renderPlayers() {
     renderRows();
   });
   renderRows();
+  form.elements.primaryPosition.value = "Midfielder";
+  renderAttributeInputs("Midfielder", form);
   fillAttributeInputs(buildDefaultAttributes(70, "Midfielder"), form);
 }
 
@@ -1119,20 +1167,32 @@ function fillPlayerForm(player) {
   Object.entries(player).forEach(([key, value]) => {
     if (form.elements[key]) form.elements[key].value = value;
   });
+  renderAttributeInputs(normalized.primaryPosition, form);
   fillAttributeInputs(normalized.attributes, form);
   form.elements.active.value = String(player.active);
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function fillAttributeInputs(attributes, form = document.getElementById("playerForm")) {
-  attributeKeys.forEach((key) => {
+  const keys = getAttributeKeys(form?.elements?.primaryPosition?.value || "");
+  keys.forEach((key) => {
     if (form?.elements[key]) form.elements[key].value = clampRating(attributes?.[key]);
   });
 }
 
-function renderAttributePills(attributes) {
+function renderAttributeInputs(primaryPosition, form = document.getElementById("playerForm")) {
+  const container = document.getElementById("playerAttributeInputs");
+  if (!container) return;
+  const keys = getAttributeKeys(primaryPosition);
+  const labels = getAttributeLabels(primaryPosition);
+  container.innerHTML = keys.map((key) => `<label>${labels[key]}<input name="${key}" type="number" min="1" max="100" required /></label>`).join("");
+}
+
+function renderAttributePills(attributes, primaryPosition = "") {
   const safeAttributes = attributes || {};
-  return `<div class="attribute-pills">${attributeKeys.map((key) => `<span class="pill gray">${attributeShortLabels[key]} ${clampRating(safeAttributes[key])}</span>`).join("")}</div>`;
+  const keys = getAttributeKeys(primaryPosition);
+  const shortLabels = getAttributeShortLabels(primaryPosition);
+  return `<div class="attribute-pills">${keys.map((key) => `<span class="pill gray">${shortLabels[key]} ${clampRating(safeAttributes[key])}</span>`).join("")}</div>`;
 }
 
 function optionHtml(value) {
@@ -1403,6 +1463,8 @@ function renderProfile() {
   const selected = playerById(state.selectedPlayerId) || state.players[0];
   const stats = selected ? computePlayerStats(selected.id) : {};
   const selectedAttributes = selected ? normalizePlayer(selected).attributes : {};
+  const selectedAttributeKeys = selected ? getAttributeKeys(selected.primaryPosition) : attributeKeys;
+  const selectedAttributeLabels = selected ? getAttributeLabels(selected.primaryPosition) : attributeLabels;
   layout(`
     <section class="profile-layout">
       <div class="panel">
@@ -1426,9 +1488,9 @@ function renderProfile() {
             <span class="pill ${selected.active ? "green" : "gray"}">${selected.active ? "Active" : "Inactive"}</span>
           </div>
           <div class="attribute-bars">
-            ${attributeKeys.map((key) => `
+            ${selectedAttributeKeys.map((key) => `
               <div class="attribute-bar">
-                <span>${attributeLabels[key]}</span>
+                <span>${selectedAttributeLabels[key]}</span>
                 <div class="bar-track"><div class="bar-fill" style="width:${selectedAttributes[key]}%"></div></div>
                 <strong>${selectedAttributes[key]}</strong>
               </div>
@@ -1436,7 +1498,7 @@ function renderProfile() {
           </div>
           ${isAdmin() ? `<form id="profileRatingForm" class="profile-rating-form">
             <label>Overall rating<input name="rating" type="number" min="1" max="100" value="${selected.rating}" /></label>
-            ${attributeKeys.map((key) => `<label>${attributeLabels[key]}<input name="${key}" type="number" min="1" max="100" value="${selectedAttributes[key]}" /></label>`).join("")}
+            ${selectedAttributeKeys.map((key) => `<label>${selectedAttributeLabels[key]}<input name="${key}" type="number" min="1" max="100" value="${selectedAttributes[key]}" /></label>`).join("")}
             <div class="actions wide">
               <button type="button" class="secondary" id="profileUseAverage">Use attribute average</button>
               <button type="submit">Save ratings</button>
@@ -1476,7 +1538,7 @@ function renderProfile() {
   });
   document.getElementById("profileUseAverage")?.addEventListener("click", () => {
     const form = document.getElementById("profileRatingForm");
-    form.elements.rating.value = attributeAverage(Object.fromEntries(attributeKeys.map((key) => [key, form.elements[key].value])));
+    form.elements.rating.value = attributeAverage({ primaryPosition: selected.primaryPosition, ...Object.fromEntries(selectedAttributeKeys.map((key) => [key, form.elements[key].value])) });
   });
   document.getElementById("profileRatingForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1484,7 +1546,7 @@ function renderProfile() {
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form));
     const rating = clampRating(data.rating);
-    const attributes = Object.fromEntries(attributeKeys.map((key) => [key, clampRating(data[key])]));
+    const attributes = Object.fromEntries(selectedAttributeKeys.map((key) => [key, clampRating(data[key])]));
     const players = state.players.map((player) => {
       if (player.id !== selected.id) return player;
       const ratingChanged = Number(player.rating) !== rating;

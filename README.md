@@ -32,6 +32,7 @@ See `DEPLOY.md` for the GitHub and Render steps.
 - Player ratings from 1 to 100
 - FIFA-style player attributes: speed, shooting, defending, and passing
 - Weak Foot player attribute
+- Goalkeeper-specific attributes: positioning, goal kicks, reflexes, handling, and diving
 - Overall rating can be set manually or from the attribute average
 - Simple access modes:
   - Admin passcode: `sunday-admin`
